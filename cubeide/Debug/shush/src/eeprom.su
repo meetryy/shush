@@ -1,0 +1,4 @@
+../shush/src/eeprom.c:33:6:eepInit	4	static
+../shush/src/eeprom.c:44:6:eepLoadAll	4	static
+../shush/src/eeprom.c:49:6:eepWrite	4	static
+../shush/src/eeprom.c:56:6:eepTest	64	static

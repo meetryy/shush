@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\shush.dir/objects.a
+D:\CodeBlocks\mingw64\bin\ar.exe qc CMakeFiles\shush.dir/objects.a @CMakeFiles\shush.dir\objects1.rsp
+D:\CodeBlocks\mingw64\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\shush.dir/objects.a -Wl,--no-whole-archive -o shush.exe -Wl,--out-implib,libshush.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\shush.dir\linklibs.rsp

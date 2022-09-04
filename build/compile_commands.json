@@ -1,0 +1,7 @@
+[
+{
+  "directory": "D:/github/shush/build",
+  "command": "D:\\CodeBlocks\\mingw64\\bin\\g++.exe   -g -o CMakeFiles\\shush.dir\\main.cpp.obj -c D:\\github\\shush\\main.cpp",
+  "file": "D:/github/shush/main.cpp"
+}
+]

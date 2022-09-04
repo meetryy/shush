@@ -1,0 +1,4 @@
+../shush/src/wspr.c:6:6:wsprStartTx	8	static
+../shush/src/wspr.c:15:6:wsprStopTx	8	static
+../shush/src/wspr.c:27:6:wsprInit	24	static
+../shush/src/wspr.c:35:13:wsprIntCall	16	static

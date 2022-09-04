@@ -1,0 +1,4 @@
+../shush/src/rtc.c:8:6:rtcSetTime	24	static
+../shush/src/rtc.c:29:9:rtcGetHours	16	static
+../shush/src/rtc.c:35:9:rtcGetMinutes	16	static
+../shush/src/rtc.c:41:6:rtcUpdateTimeString	24	static

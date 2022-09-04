@@ -1,0 +1,4 @@
+../shush/src/schedule.c:10:6:schedInit	8	static
+../shush/src/schedule.c:18:6:schedMainLoop	8	static
+../shush/src/schedule.c:22:13:schedRun	8	static
+../shush/src/schedule.c:32:6:everythingElse	4	static
