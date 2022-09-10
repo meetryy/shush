@@ -20,7 +20,7 @@ enum {  NO_ERR = 0,
         ERR_FORBIDDEN_CHAR = -10, 
         };
 
-const unsigned char sync[] = {
+const uint8_t sync[] = {
   1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0,
   1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0,
   0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1,
@@ -112,18 +112,18 @@ int locToInt(char* loc){
     return locM;
 }
 
-unsigned char reverseBits(unsigned char b) {
+uint8_t reverseBits(uint8_t b) {
   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
   return b;
 }
 
-unsigned char reverseAddress(unsigned char &reverseAddressIndex) {
-  unsigned char result = reverseBits(reverseAddressIndex++);
-  while (result > 161) {
-    result = reverseBits(reverseAddressIndex++);
-  }
+uint8_t reverseAddress(uint8_t* reverseAddressIndex) {
+//*reverseAddressIndex = *reverseAddressIndex +1;
+  uint8_t result = reverseBits((*reverseAddressIndex)++);
+  while (result > 161) 
+    result = reverseBits((*reverseAddressIndex)++);
   return result;
 }
 
@@ -152,7 +152,7 @@ int wsprCalcData(void) {
 
     int i;
     uint32_t reg = 0;
-    unsigned char reverseAddressIndex = 0;
+    uint8_t reverseAddressIndex;
 
     wsprData.N = newN;
     wsprData.M1 = newM1;
@@ -165,22 +165,22 @@ int wsprCalcData(void) {
         reg <<= 1;
 
         if (wsprData.N & ((uint32_t)1 << i)) reg |= 1;
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
     }
 
     for (i = 21; i >= 0; i--) {
         reg <<= 1;
         if (wsprData.M & ((uint32_t)1 << i)) 
             reg |= 1;
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
     }
 
     for (i = 30; i >= 0; i--) {
         reg <<= 1;
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
-        wsprData.data[reverseAddress(reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xf2d05351L);
+        wsprData.data[reverseAddress(&reverseAddressIndex)] += 2 * calculateParity(reg & 0xe4613c47L);
     }
     
     strcpy(wsprMsg.callsign, wsprMsg.newCallsign);
@@ -327,11 +327,224 @@ void errOut(int errCode){
     }
 }
 
+int hexCharToInt(char a){
+    if ((a >= 48) && (a <= 57))
+        return (a - 48);
+    else if ((a >= 65) && (a <= 70))
+        return (a - 65 + 10);
+}
+
+struct {
+    struct {
+        uint8_t     H;
+        uint8_t     M;
+        uint8_t     S;
+        uint16_t    MS;
+        char        str[12];
+    } time;
+    
+    
+
+    struct {
+        uint8_t     D;
+        uint8_t     M;
+        uint8_t     Y;
+        char        str[7];
+    } date;
+
+
+    char    lonStr[16];
+    char    latStr[16];
+    float   lon;
+    float   lat;
+    char    qth[5];
+
+    int     satInUse;
+    int     satInView;
+    int     fix;
+    char    status[2];
+
+}   gpsData;
+
+
+char* strtokNew(char* str, char delim);
+
+char msgData[32][16] = {0};
+void parseFirstNTokens(char* str, int number){
+    memset(msgData, '\0', 32*16);
+    char* pch = strtokNew (str, ','); 
+    int msgN = 0;
+    while ((pch != NULL) && ((msgN < number) || (msgN == 0))) {
+        strcpy(msgData[msgN], pch);
+        pch = strtokNew (NULL, ',');
+        msgN++;
+    }
+}
+
+
+float ratof(const char *arr)
+{
+  float val = 0;
+  int afterdot=0;
+  float scale=1;
+  int neg = 0;
+
+  if (*arr == '-') {
+    arr++;
+    neg = 1;
+  }
+  while (*arr) {
+    if (afterdot) {
+      scale = scale/10;
+      val = val + (*arr-'0')*scale;
+    } else {
+      if (*arr == '.')
+    afterdot++;
+      else
+    val = val * 10.0 + (*arr - '0');
+    }
+    arr++;
+  }
+  if(neg) return -val;
+  else    return  val;
+}
+
+float GpsToDecimalDegrees(const char* nmeaPos, char quadrant){
+  float v= 0;
+  if(strlen(nmeaPos)>5)
+  {
+    char integerPart[3+1];
+    int digitCount= (nmeaPos[4]=='.' ? 2 : 3);
+    memcpy(integerPart, nmeaPos, digitCount);
+    integerPart[digitCount]= 0;
+    nmeaPos+= digitCount;
+    v= atoi(integerPart) + ratof(nmeaPos)/60.0f;
+    if(quadrant=='W' || quadrant=='S')
+      v= -v;
+  }
+  return v;
+}
+#include <math.h>
+
+enum nmeaErrors{ERR_NMEA_WRONG_START_CHAR, ERR_NMEA_WRONG_END_CHAR, ERR_NMEA_NO_CHECKSUM_DELIM, ERR_NMEA_CHECKSUM_ERR};
+
+enum RMCitems{RMC_TIME = 1, RMC_STATUS, RMC_LAT, RMC_N, RMC_LON, RMC_E, RMC_SOG, RMC_COG, RMC_DATE, RMC_NUMBER};
+enum GGAitems{GGA_SATS = 7, GGA_NUMBER = 8};
+
+int nmeaProcessString(char* nmeaArray, int msgLength){
+    // check if begin is $
+    if (nmeaArray[0] != '$')
+        return ERR_NMEA_WRONG_START_CHAR;
+    int msgLen = msgLength;//sizeof(nmeaArray);
+    char nmeaString[msgLen];
+    strncpy(nmeaString, nmeaArray, msgLen); // "...\r\n\0"
+    // check if end is \r\n
+   
+    if (!((nmeaArray[msgLen-3] == '\r') && (nmeaArray[msgLen-2] == '\n')))
+        return ERR_NMEA_WRONG_END_CHAR;
+ 
+    if (nmeaArray[msgLen-6] != '*')
+        return ERR_NMEA_NO_CHECKSUM_DELIM;
+    // calculate checkdum and compare
+    // extract sentence type
+    char thisChar = '\0';
+    uint8_t checksum = 0;
+    
+    for (int i = 1; i < msgLen - 6; i++){
+        thisChar = nmeaArray[i];
+        checksum = checksum ^ thisChar;
+    }
+    
+    uint8_t rxChecksum = hexCharToInt(nmeaArray[msgLen - 5]) * 16 + hexCharToInt(nmeaArray[msgLen - 4]);
+    if (rxChecksum != checksum)
+        return ERR_NMEA_CHECKSUM_ERR;
+
+    char talkerID[4];
+    strncpy(talkerID, nmeaArray + 3, 3);
+    talkerID[3] = '\0';
+
+    if (!strcmp("RMC", talkerID)) {//|| !strcmp("$GNRMC\0", talkerID) || !strcmp("$GNGGA\0", talkerID)){
+        parseFirstNTokens(nmeaString, RMC_NUMBER);
+        
+        strcpy(gpsData.time.str, msgData[RMC_TIME]);
+        gpsData.time.H = (gpsData.time.str[0] - 48) * 10 + (gpsData.time.str[1] - 48);
+        gpsData.time.M = (gpsData.time.str[2] - 48) * 10 + (gpsData.time.str[3] - 48);
+        gpsData.time.S = (gpsData.time.str[4] - 48) * 10 + (gpsData.time.str[5] - 48);
+
+        char timeMsStr[6];
+        strncpy(timeMsStr, gpsData.time.str+7, strlen(gpsData.time.str)-7);
+        gpsData.time.MS = atoi(timeMsStr);
+        
+        strcpy(gpsData.date.str, msgData[RMC_DATE]);
+        gpsData.date.D = (gpsData.date.str[0] - 48) * 10 + (gpsData.date.str[1] - 48);
+        gpsData.date.M = (gpsData.date.str[2] - 48) * 10 + (gpsData.date.str[3] - 48);
+        gpsData.date.Y = (gpsData.date.str[4] - 48) * 10 + (gpsData.date.str[5] - 48);
+
+        strcpy(gpsData.lonStr, msgData[RMC_LON]);
+        strcpy(gpsData.latStr, msgData[RMC_LAT]);
+        gpsData.lat = GpsToDecimalDegrees(gpsData.latStr, msgData[RMC_N][0]);
+        gpsData.lon = GpsToDecimalDegrees(gpsData.lonStr, msgData[RMC_E][0]);
+
+        float lat = gpsData.lat + 90.0f;                                                  // Locator lat/lon shift.
+        float lon = gpsData.lon + 180.0f;
+
+        gpsData.qth[0] = ((int)lon / 20) + 65;              // 1st digit: 20deg longitude slot.
+        gpsData.qth[1] = ((int)lat / 10) + 65;             // 2nd digit: 10deg latitude slot.
+        gpsData.qth[2] = ((int)lon % 20) / 2 + 48;          // 3rd digit: 2deg longitude slot.
+        gpsData.qth[3] = ((int)lat % 10) / 1 + 48;          // 4th digit: 1deg latitude slot.
+        //gpsData.qth[4] = ((int)lon % 2) * (int)(60.0f / 5.0f) + 97; // 5th digit: 5min longitude slot.
+        //gpsData.qth[5] = ((int)lat % 1) * (int)(60.0f / 2.5f) + 97;  // 6th digit: 2.5min latitude slot.
+        gpsData.qth[4] = '\0';
+
+        strcpy(gpsData.status, msgData[RMC_STATUS]);
+        gpsData.fix = (gpsData.status[0] == 'A');
+    }
+
+    if (!strcmp("GGA", talkerID)) {
+        parseFirstNTokens(nmeaString, GGA_NUMBER);
+        gpsData.satInUse = atoi(msgData[GGA_SATS]);
+    }
+
+}
+
+
+#define STRTOK_MAX  (64)
+char* strtokNew(char* str, char delim){
+    static int lastPos;
+    static int lastLen;
+    static char* lastStr;
+    static char bufStr[STRTOK_MAX];
+
+    if (str != NULL) {
+        lastPos = 0; 
+        lastLen = strlen(str); 
+        lastStr = str;
+    }
+
+    int j = 0;
+    for (int i = lastPos; i < lastLen; i++){
+
+        if (lastStr[i] != delim)
+            bufStr[j] = lastStr[i];
+        else {
+            bufStr[j] = '\0';
+            lastPos = i + 1;
+            return bufStr;
+        }
+        if (j<STRTOK_MAX) j++;
+    }
+    return NULL;
+}
+
+
+
 int main(int, char**) {
     // call to int 
     // The 37 allowed characters are allocated values from 0 to 36 such that ‘0’ – ‘9’ give 0 – 9, ‘A’ to ‘Z’ give 10 to 35 and [space] is given the value 36.
     // TODO: check callsign format
-    int res = wsprMsgSet(SET_CALL, "r1bsa\0");
+
+    /*
+    int res = wsprMsgSet(SET_CALL, "r1ccu\0");
     if (res < NO_ERR) errOut(res);
 
     res = wsprMsgSet(SET_LOC, "kp50\0");
@@ -342,6 +555,17 @@ int main(int, char**) {
 
     res = wsprCalcData();
     if (res < NO_ERR) errOut(res);
+*/
+
+
+
+    char nmeaArray1[] = "$GNGGA,115113.00,6003.16079,N,03025.78127,E,1,03,3.48,126.8,M,15.8,M,,*4A\r\n";
+    //char nmeaArray1[] = "$GNGGA,,,,,,0,00,99.99,,,,,,*56\r\n";
+    char nmeaArray2[] = "$GNRMC,222024.00,A,6003.13892,N,03025.80624,E,0.166,,090922,,,A*63\r\n";
+
+    nmeaProcessString(nmeaArray1, sizeof(nmeaArray1));
+    nmeaProcessString(nmeaArray2, sizeof(nmeaArray2));
+
 
     return 0;
 }

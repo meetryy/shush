@@ -65,8 +65,8 @@ void si5351_EnableOutputs(uint8_t enabled);
  * You can also modify si5351.c to share one PLL for any frequencies <= 112.5 MHz,
  * however this will increase the worse case calculation error to 13 Hz.
  */
-void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf);
-
+void si5351_Calc(uint64_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf);
+void si5351_CalcOld(uint64_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf);
 /*
  * si5351_CalcIQ() finds PLL and MS parameters that give phase shift 90° between two channels,
  * if 0 and (uint8_t)out_conf.div are passed as phaseOffset for these channels. Channels should

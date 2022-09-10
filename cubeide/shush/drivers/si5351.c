@@ -218,7 +218,60 @@ int si5351_SetupOutput(uint8_t output, si5351PLL_t pllSource, si5351DriveStrengt
 
 // Calculates PLL, MS and RDiv settings for given Fclk in [8_000, 160_000_000] range.
 // The actual frequency will differ less than 6 Hz from given Fclk, assuming `correction` is right.
-void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf) {
+void si5351_Calc(uint64_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf) {
+    //if(Fclk < 8000) Fclk = 8000;
+    //else if(Fclk > 160000000) Fclk = 160000000;
+
+    out_conf->allowIntegerMode = 1;
+
+    if(Fclk < 1000000000) {
+        // For frequencies in [8_000, 500_000] range we can use si5351_Calc(Fclk*64, ...) and SI5351_R_DIV_64.
+        // In practice it's worth doing for any frequency below 1 MHz, since it reduces the error.
+        Fclk *= 64;
+        out_conf->rdiv = SI5351_R_DIV_64;
+    } else
+        out_conf->rdiv = SI5351_R_DIV_1;
+
+    // Apply correction, _after_ determining rdiv.
+    Fclk = Fclk - ((Fclk / 1000000) * si5351Correction)/100;
+
+    // Here we are looking for integer values of a,b,c,x,y,z such as:
+    // N = a + b / c    # pll settings
+    // M = x + y / z    # ms  settings
+    // Fclk = Fxtal * N / M
+    // N in [24, 36]
+    // M in [8, 1800] or M in {4,6}
+    // b < c, y < z
+    // b,c,y,z <= 2**20
+    // c, z != 0
+    // For any Fclk in [500K, 160MHz] this algorithm finds a solution
+    // such as abs(Ffound - Fclk) <= 6 Hz
+
+    const uint64_t Fxtal = 25000000000;
+    uint64_t a, b, c, x, y, z, t;
+
+    //if(Fclk < 81000000000) {
+        // Valid for Fclk in 0.5..112.5 MHz range
+        // However an error is > 6 Hz above 81 MHz
+        a = 36; // PLL runs @ 900 MHz
+        b = 0;
+        c = 1;
+        int64_t Fpll = 900000000000;
+        x = Fpll/Fclk;
+        t = (Fclk >> 20) + 1;
+        y = (Fpll % Fclk) / t;
+        z = Fclk / t;
+    //}
+
+    pll_conf->mult = a;
+    pll_conf->num = b;
+    pll_conf->denom = c;
+    out_conf->div = x;
+    out_conf->num = y;
+    out_conf->denom = z;
+}
+
+void si5351_CalcOld(uint64_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf) {
     if(Fclk < 8000) Fclk = 8000;
     else if(Fclk > 160000000) Fclk = 160000000;
 
@@ -248,8 +301,8 @@ void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t
     // For any Fclk in [500K, 160MHz] this algorithm finds a solution
     // such as abs(Ffound - Fclk) <= 6 Hz
 
-    const int32_t Fxtal = 25000000;
-    int32_t a, b, c, x, y, z, t;
+    const uint64_t Fxtal = 25000000;
+    uint64_t a, b, c, x, y, z, t;
 
     if(Fclk < 81000000) {
         // Valid for Fclk in 0.5..112.5 MHz range
@@ -257,14 +310,12 @@ void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t
         a = 36; // PLL runs @ 900 MHz
         b = 0;
         c = 1;
-        int32_t Fpll = 900000000;
+        uint64_t Fpll = 900000000;
         x = Fpll/Fclk;
         t = (Fclk >> 20) + 1;
         y = (Fpll % Fclk) / t;
         z = Fclk / t;
-    }
-
-    else {
+    } else {
         // Valid for Fclk in 75..160 MHz range
         if(Fclk >= 150000000) {
             x = 4;
@@ -275,8 +326,8 @@ void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t
         }
         y = 0;
         z = 1;
-        
-        int32_t numerator = x*Fclk;
+
+        uint64_t numerator = x*Fclk;
         a = numerator/Fxtal;
         t = (Fxtal >> 20) + 1;
         b = (numerator % Fxtal) / t;
@@ -291,46 +342,6 @@ void si5351_Calc(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t
     out_conf->denom = z;
 }
 
-// si5351_CalcIQ() finds PLL and MS parameters that give phase shift 90° between two channels,
-// if 0 and (uint8_t)out_conf.div are passed as phaseOffset for these channels. Channels should
-// use the same PLL to make it work. Fclk can be from 1.4 MHz to 100 MHz. The actual frequency will
-// differ less than 4 Hz from given Fclk, assuming `correction` is right.
-void si5351_CalcIQ(int32_t Fclk, si5351PLLConfig_t* pll_conf, si5351OutputConfig_t* out_conf) {
-    const int32_t Fxtal = 25000000;
-    int32_t Fpll;
-
-    if(Fclk < 1400000) Fclk = 1400000;
-    else if(Fclk > 100000000) Fclk = 100000000;
-
-    // apply correction
-    Fclk = Fclk - ((Fclk/1000000)*si5351Correction)/100;
-
-    // disable integer mode
-    out_conf->allowIntegerMode = 0;
-
-    // Using RDivider's changes the phase shift and AN619 doesn't give any
-    // guarantees regarding this change.
-    out_conf->rdiv = 0;
-
-    if(Fclk < 4900000) {
-        // Little hack, run PLL below 600 MHz to cover 1.4 MHz .. 4.725 MHz range.
-        // AN619 doesn't literally say that PLL can't run below 600 MHz.
-        // Experiments showed that PLL gets unstable when you run it below 177 MHz,
-        // which limits Fclk to 177 / 127 = 1.4 MHz.
-        out_conf->div = 127;
-    } else if(Fclk < 8000000) {
-        out_conf->div = 625000000 / Fclk;
-    } else {
-        out_conf->div = 900000000 / Fclk;
-    }
-    out_conf->num = 0;
-    out_conf->denom = 1;
-
-    Fpll = Fclk * out_conf->div;
-    pll_conf->mult = Fpll / Fxtal;
-    pll_conf->num = (Fpll % Fxtal) / 24;
-    pll_conf->denom = Fxtal / 24; // denom can't exceed 0xFFFFF
-}
 
 // Setup CLK0 for given frequency and drive strength. Use PLLA.
 void si5351_SetupCLK0(int32_t Fclk, si5351DriveStrength_t driveStrength) {

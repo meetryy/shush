@@ -1,0 +1,6 @@
+../shush/src/gps.c:7:5:hexCharToInt	16	static
+../shush/src/gps.c:50:6:parseFirstNTokens	24	static
+../shush/src/gps.c:61:7:ratof	40	static
+../shush/src/gps.c:88:7:GpsToDecimalDegrees	40	static
+../shush/src/gps.c:110:5:nmeaProcessString	88	dynamic
+../shush/src/gps.c:191:7:strtokNew	24	static

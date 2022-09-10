@@ -38,7 +38,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../USB_DEVICE/Target/usbd_conf.h \
  D:/github/shush/cubeide/shush/inc/tools.h \
  D:/github/shush/cubeide/shush/drivers/si5351.h \
- D:/github/shush/cubeide/shush/inc/wspr.h
+ D:/github/shush/cubeide/shush/inc/wspr.h \
+ D:/github/shush/cubeide/shush/inc/transmitter.h \
+ D:/github/shush/cubeide/shush/inc/gps.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 ../Core/Inc/stm32f1xx_hal_conf.h:
@@ -80,3 +82,5 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 D:/github/shush/cubeide/shush/inc/tools.h:
 D:/github/shush/cubeide/shush/drivers/si5351.h:
 D:/github/shush/cubeide/shush/inc/wspr.h:
+D:/github/shush/cubeide/shush/inc/transmitter.h:
+D:/github/shush/cubeide/shush/inc/gps.h:

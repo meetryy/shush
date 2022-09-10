@@ -1,0 +1,5 @@
+../shush/src/transmitter.c:7:6:wsprStartTx	8	static
+../shush/src/transmitter.c:15:6:wsprStopTx	8	static
+../shush/src/transmitter.c:27:10:hzToFreq	80	static
+../shush/src/transmitter.c:35:6:wsprInit	48	static
+../shush/src/transmitter.c:43:13:wsprIntCall	16	static

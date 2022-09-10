@@ -1,4 +1,10 @@
-../shush/src/wspr.c:6:6:wsprStartTx	8	static
-../shush/src/wspr.c:15:6:wsprStopTx	8	static
-../shush/src/wspr.c:27:6:wsprInit	24	static
-../shush/src/wspr.c:35:13:wsprIntCall	16	static
+../shush/src/wspr.c:60:5:callCharToCharCode	24	static
+../shush/src/wspr.c:68:5:callToInt	40	static
+../shush/src/wspr.c:82:5:locCharToInt	24	static
+../shush/src/wspr.c:88:5:locNumToInt	24	static
+../shush/src/wspr.c:94:5:locToInt	32	static
+../shush/src/wspr.c:115:9:reverseBits	16	static
+../shush/src/wspr.c:122:5:calculateParity	24	static
+../shush/src/wspr.c:131:9:reverseAddress	24	static
+../shush/src/wspr.c:139:5:wsprCalcData	40	static
+../shush/src/wspr.c:193:5:wsprMsgSet	112	dynamic
